@@ -215,7 +215,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         rectangleShapeLayer.anchorPoint = normalizedCenterPoint
         rectangleShapeLayer.position = captureDeviceBoundsCenterPoint
         rectangleShapeLayer.fillColor = UIColor.white.withAlphaComponent(0.2).cgColor
-        rectangleShapeLayer.strokeColor = UIColor.blue.withAlphaComponent(0.7).cgColor
+        rectangleShapeLayer.strokeColor = self.view.tintColor.withAlphaComponent(0.7).cgColor
         rectangleShapeLayer.lineWidth = 25
         rectangleShapeLayer.lineJoin = .round
         rectangleShapeLayer.shadowOpacity = 0.8
