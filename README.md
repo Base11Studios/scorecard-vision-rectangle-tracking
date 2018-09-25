@@ -7,3 +7,7 @@ Iterating on Apple's [Tracking the User's Face in Real Time](https://developer.a
 * Rectangles not being drawn at right FPS
 * Rectangle path not "pretty"
 * Rectangles not drawn when finger on corner
+
+## Resources
+
+* [Capturing Still and Live Photos](https://developer.apple.com/documentation/avfoundation/cameras_and_media_capture/capturing_still_and_live_photos)
