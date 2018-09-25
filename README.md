@@ -4,5 +4,6 @@ Iterating on Apple's [Tracking the User's Face in Real Time](https://developer.a
 
 ## Current bugs
 
-* Rectangles not being drawn in the right place
-* Rectangles not being drawn at the right orientation
+* Rectangles not being drawn at right FPS
+* Rectangle path not "pretty"
+* Rectangles not drawn when finger on corner
