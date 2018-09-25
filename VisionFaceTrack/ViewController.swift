@@ -227,56 +227,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         self.detectionOverlayLayer = overlayLayer
         self.detectedRectangleShapeLayer = rectangleShapeLayer
         
-        self.updateLayerGeometry()
-    }
-    
-    fileprivate func updateLayerGeometry() {
-        guard let overlayLayer = self.detectionOverlayLayer,
-            let rootLayer = self.rootLayer,
-            let previewLayer = self.previewLayer
-            else {
-            return
-        }
-        
-        CATransaction.setValue(NSNumber(value: true), forKey: kCATransactionDisableActions)
-        
-        let videoPreviewRect = previewLayer.layerRectConverted(fromMetadataOutputRect: CGRect(x: 0, y: 0, width: 1, height: 1))
-        
-        var rotation: CGFloat
-        var scaleX: CGFloat
-        var scaleY: CGFloat
-        
-        // Rotate the layer into screen orientation.
-        switch UIDevice.current.orientation {
-        case .portraitUpsideDown:
-            rotation = 180
-            scaleX = videoPreviewRect.width / captureDeviceResolution.width
-            scaleY = videoPreviewRect.height / captureDeviceResolution.height
-            
-        case .landscapeLeft:
-            rotation = 90
-            scaleX = videoPreviewRect.height / captureDeviceResolution.width
-            scaleY = scaleX
-            
-        case .landscapeRight:
-            rotation = -90
-            scaleX = videoPreviewRect.height / captureDeviceResolution.width
-            scaleY = scaleX
-            
-        default:
-            rotation = 0
-            scaleX = videoPreviewRect.width / captureDeviceResolution.width
-            scaleY = videoPreviewRect.height / captureDeviceResolution.height
-        }
-        
-        // Scale and mirror the image to ensure upright presentation.
-        let affineTransform = CGAffineTransform(rotationAngle: avUtil.radiansForDegrees(rotation))
-            .scaledBy(x: scaleX, y: scaleY)
-        overlayLayer.setAffineTransform(affineTransform)
-        
-        // Cover entire screen UI.
-        let rootLayerBounds = rootLayer.bounds
-        overlayLayer.position = CGPoint(x: rootLayerBounds.midX, y: rootLayerBounds.midY)
+        avUtil.updateLayerGeometry(captureDeviceResolution: self.captureDeviceResolution, detectionOverlayLayer: self.detectionOverlayLayer, rootLayer: self.rootLayer, previewLayer: self.previewLayer)
     }
     
     fileprivate func drawRectangleObservations(_ rectObservations: [VNRectangleObservation]) {
@@ -292,19 +243,23 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         let rectanglePath = CGMutablePath()
         
         for rectObservation in rectObservations {
-            let points = [rectObservation.bottomLeft, rectObservation.bottomRight, rectObservation.topRight, rectObservation.topLeft]
-            let convertedPoints = points.map { self.convertFromCamera($0) }
-            let rectPath = getBoxPath(points: convertedPoints)
-            
-            rectanglePath.addPath(rectPath)
+            rectanglePath.addPath(traceRectPath(rectObservation: rectObservation))
         }
         
         rectangleShapeLayer.path = rectanglePath
         self.detectedRectangleShapeLayer = rectangleShapeLayer
         
-        self.updateLayerGeometry()
+        avUtil.updateLayerGeometry(captureDeviceResolution: self.captureDeviceResolution, detectionOverlayLayer: self.detectionOverlayLayer, rootLayer: self.rootLayer, previewLayer: self.previewLayer)
         
         CATransaction.commit()
+    }
+    
+    func traceRectPath(rectObservation: VNRectangleObservation) -> CGPath {
+        let points = [rectObservation.bottomLeft, rectObservation.bottomRight, rectObservation.topRight, rectObservation.topLeft]
+        let convertedPoints = points.map { self.convertFromCamera($0) }
+        let rectPath = getBoxPath(points: convertedPoints)
+        
+        return rectPath
     }
     
     func convertFromCamera(_ point: CGPoint) -> CGPoint {
