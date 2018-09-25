@@ -37,8 +37,6 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        avUtil = AVUtility()
-        
         self.session = self.setupAVCaptureSession()
         
         self.prepareRectangleVisionRequest()
@@ -216,11 +214,12 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         rectangleShapeLayer.bounds = captureDeviceBounds
         rectangleShapeLayer.anchorPoint = normalizedCenterPoint
         rectangleShapeLayer.position = captureDeviceBoundsCenterPoint
-        rectangleShapeLayer.fillColor = nil
-        rectangleShapeLayer.strokeColor = UIColor.green.withAlphaComponent(0.7).cgColor
-        rectangleShapeLayer.lineWidth = 5
-        rectangleShapeLayer.shadowOpacity = 0.7
-        rectangleShapeLayer.shadowRadius = 5
+        rectangleShapeLayer.fillColor = UIColor.white.withAlphaComponent(0.2).cgColor
+        rectangleShapeLayer.strokeColor = UIColor.blue.withAlphaComponent(0.7).cgColor
+        rectangleShapeLayer.lineWidth = 25
+        rectangleShapeLayer.lineJoin = .round
+        rectangleShapeLayer.shadowOpacity = 0.8
+        rectangleShapeLayer.shadowRadius = 8
         
         overlayLayer.addSublayer(rectangleShapeLayer)
         rootLayer.addSublayer(overlayLayer)
