@@ -14,17 +14,14 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     // AVCapture variables to hold sequence data
     var session: AVCaptureSession?
     var previewLayer: AVCaptureVideoPreviewLayer?
-    
     var videoDataOutput: AVCaptureVideoDataOutput?
     var videoDataOutputQueue: DispatchQueue?
-    
     var captureDevice: AVCaptureDevice?
     var captureDeviceResolution: CGSize = CGSize()
     
     // Layer UI for drawing Vision results
     var rootLayer: CALayer?
     var detectionOverlayLayer: CALayer?
-    // Rectangle
     var detectedRectangleShapeLayer: CAShapeLayer?
     
     // Vision requests
@@ -33,20 +30,20 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     lazy var rectSequenceRequestHandler = VNSequenceRequestHandler()
     
+    lazy var avUtil = AVUtility()
+    
     // MARK: UIViewController overrides
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        avUtil = AVUtility()
         
         self.session = self.setupAVCaptureSession()
         
         self.prepareRectangleVisionRequest()
         
         self.session?.startRunning()
-    }
-    
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
     }
     
     // Ensure that the interface stays locked in Portrait.
@@ -65,7 +62,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     fileprivate func setupAVCaptureSession() -> AVCaptureSession? {
         let captureSession = AVCaptureSession()
         do {
-            let inputDevice = try self.configureBackCamera(for: captureSession)
+            let inputDevice = try avUtil.configureBackCamera(for: captureSession)
             self.configureVideoDataOutput(for: inputDevice.device, resolution: inputDevice.resolution, captureSession: captureSession)
             self.designatePreviewLayer(for: captureSession)
             return captureSession
@@ -80,53 +77,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         return nil
     }
     
-    /// - Tag: ConfigureDeviceResolution
-    fileprivate func highestResolution420Format(for device: AVCaptureDevice) -> (format: AVCaptureDevice.Format, resolution: CGSize)? {
-        var highestResolutionFormat: AVCaptureDevice.Format? = nil
-        var highestResolutionDimensions = CMVideoDimensions(width: 0, height: 0)
-        
-        for format in device.formats {
-            let deviceFormat = format as AVCaptureDevice.Format
-            
-            let deviceFormatDescription = deviceFormat.formatDescription
-            if CMFormatDescriptionGetMediaSubType(deviceFormatDescription) == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange {
-                let candidateDimensions = CMVideoFormatDescriptionGetDimensions(deviceFormatDescription)
-                if (highestResolutionFormat == nil) || (candidateDimensions.width > highestResolutionDimensions.width) {
-                    highestResolutionFormat = deviceFormat
-                    highestResolutionDimensions = candidateDimensions
-                }
-            }
-        }
-        
-        if highestResolutionFormat != nil {
-            let resolution = CGSize(width: CGFloat(highestResolutionDimensions.width), height: CGFloat(highestResolutionDimensions.height))
-            return (highestResolutionFormat!, resolution)
-        }
-        
-        return nil
-    }
     
-    fileprivate func configureBackCamera(for captureSession: AVCaptureSession) throws -> (device: AVCaptureDevice, resolution: CGSize) {
-        let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera], mediaType: .video, position: .back)
-        
-        if let device = deviceDiscoverySession.devices.first {
-            if let deviceInput = try? AVCaptureDeviceInput(device: device) {
-                if captureSession.canAddInput(deviceInput) {
-                    captureSession.addInput(deviceInput)
-                }
-                
-                if let highestResolution = self.highestResolution420Format(for: device) {
-                    try device.lockForConfiguration()
-                    device.activeFormat = highestResolution.format
-                    device.unlockForConfiguration()
-                    
-                    return (device, highestResolution.resolution)
-                }
-            }
-        }
-        
-        throw NSError(domain: "ViewController", code: 1, userInfo: nil)
-    }
     
     /// - Tag: CreateSerialDispatchQueue
     fileprivate func configureVideoDataOutput(for inputDevice: AVCaptureDevice, resolution: CGSize, captureSession: AVCaptureSession) {
@@ -202,27 +153,6 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     fileprivate func radiansForDegrees(_ degrees: CGFloat) -> CGFloat {
         return CGFloat(Double(degrees) * Double.pi / 180.0)
-    }
-    
-    func exifOrientationForDeviceOrientation(_ deviceOrientation: UIDeviceOrientation) -> CGImagePropertyOrientation {
-        
-        switch deviceOrientation {
-        case .portraitUpsideDown:
-            return .left
-            
-        case .landscapeLeft:
-            return .up
-            
-        case .landscapeRight:
-            return .down
-            
-        default:
-            return .right
-        }
-    }
-    
-    func exifOrientationForCurrentDeviceOrientation() -> CGImagePropertyOrientation {
-        return exifOrientationForDeviceOrientation(UIDevice.current.orientation)
     }
     
     // Try preparing a rectangle Vision Request
@@ -348,7 +278,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         
         // Scale and mirror the image to ensure upright presentation.
         let affineTransform = CGAffineTransform(rotationAngle: radiansForDegrees(rotation))
-            .scaledBy(x: scaleX, y: -scaleY)
+            .scaledBy(x: scaleX, y: scaleY)
         overlayLayer.setAffineTransform(affineTransform)
         
         // Cover entire screen UI.
@@ -356,9 +286,6 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         overlayLayer.position = CGPoint(x: rootLayerBounds.midX, y: rootLayerBounds.midY)
     }
     
-    /*
-        shamu
-    */
     fileprivate func drawRectangleObservations(_ rectObservations: [VNRectangleObservation]) {
         
         guard let rectangleShapeLayer = self.detectedRectangleShapeLayer else {
@@ -398,8 +325,8 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         
         let transform = CGAffineTransform.identity
             .scaledBy(x: 1, y: -1)
-            .translatedBy(x: 0, y: -previewView!.frame.size.height)
-            .scaledBy(x: previewView!.frame.size.width, y: previewView!.frame.size.height)
+            .translatedBy(x: 0, y: -self.captureDeviceResolution.height)
+            .scaledBy(x: self.captureDeviceResolution.width, y: self.captureDeviceResolution.height)
         
         return point.applying(transform)
         
@@ -415,8 +342,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     }
     
     // MARK: AVCaptureVideoDataOutputSampleBufferDelegate
-    /// - Tag: PerformRequests
-    // Handle delegate method callback on receiving a sample buffer.
+    
     public func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         
         var requestHandlerOptions: [VNImageOption: AnyObject] = [:]
@@ -431,7 +357,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
             return
         }
         
-        let exifOrientation = self.exifOrientationForCurrentDeviceOrientation()
+        let exifOrientation = avUtil.exifOrientationForCurrentDeviceOrientation()
         
         guard let requests = self.rectTrackingRequests, !requests.isEmpty else {
             // No tracking object detected, so perform initial detection
