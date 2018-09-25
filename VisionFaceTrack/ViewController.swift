@@ -149,12 +149,6 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         self.presentErrorAlert(withTitle: "Failed with error \(error.code)", message: error.localizedDescription)
     }
     
-    // MARK: Helper Methods for Handling Device Orientation & EXIF
-    
-    fileprivate func radiansForDegrees(_ degrees: CGFloat) -> CGFloat {
-        return CGFloat(Double(degrees) * Double.pi / 180.0)
-    }
-    
     // Try preparing a rectangle Vision Request
     fileprivate func prepareRectangleVisionRequest() {
         
@@ -163,7 +157,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         let rectDetectionRequest = VNDetectRectanglesRequest(completionHandler: { (request, error) in
             
             if error == nil {
-                print("RectDetection error: \(String(describing: error)).")
+                NSLog("RectDetection error: \(String(describing: error)).")
             }
             
             guard let rectDetectionRequest = request as? VNDetectRectanglesRequest,
@@ -277,7 +271,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         }
         
         // Scale and mirror the image to ensure upright presentation.
-        let affineTransform = CGAffineTransform(rotationAngle: radiansForDegrees(rotation))
+        let affineTransform = CGAffineTransform(rotationAngle: avUtil.radiansForDegrees(rotation))
             .scaledBy(x: scaleX, y: scaleY)
         overlayLayer.setAffineTransform(affineTransform)
         
@@ -289,7 +283,6 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     fileprivate func drawRectangleObservations(_ rectObservations: [VNRectangleObservation]) {
         
         guard let rectangleShapeLayer = self.detectedRectangleShapeLayer else {
-            print("rectangleShapeLayer is nil")
             return
         }
         
@@ -300,16 +293,10 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         let rectanglePath = CGMutablePath()
         
         for rectObservation in rectObservations {
-            //let displaySize = self.captureDeviceResolution
-            //let rectBounds = VNImageRectForNormalizedRect(rectObservation.boundingBox, Int(displaySize.width), Int(displaySize.height))
-            //rectanglePath.addRect(rectBounds)
-
-            
             let points = [rectObservation.bottomLeft, rectObservation.bottomRight, rectObservation.topRight, rectObservation.topLeft]
             let convertedPoints = points.map { self.convertFromCamera($0) }
             let rectPath = getBoxPath(points: convertedPoints)
-            print("points   : \(points)")
-            print("converted: \(convertedPoints)")
+            
             rectanglePath.addPath(rectPath)
         }
         
@@ -353,7 +340,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         }
         
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-            print("Failed to obtain a CVPixelBuffer for the current output frame.")
+            NSLog("Failed to obtain a CVPixelBuffer for the current output frame.")
             return
         }
         
@@ -420,7 +407,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
             
             let rectLandmarksRequest = VNDetectRectanglesRequest { (request, error) in
                 if error != nil {
-                    print("RectLandmarks error: \(String(describing: error))")
+                    NSLog("RectLandmarks error: \(String(describing: error))")
                 }
                 
                 guard let rectRequest = request as? VNDetectRectanglesRequest,

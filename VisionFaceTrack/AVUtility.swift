@@ -58,6 +58,12 @@ class AVUtility {
         throw NSError(domain: "AVUtility", code: 1, userInfo: nil)
     }
     
+    // MARK: Helper Methods for Handling Device Orientation & EXIF
+    
+    func radiansForDegrees(_ degrees: CGFloat) -> CGFloat {
+        return CGFloat(Double(degrees) * Double.pi / 180.0)
+    }
+    
     func exifOrientationForDeviceOrientation(_ deviceOrientation: UIDeviceOrientation) -> CGImagePropertyOrientation {
         
         switch deviceOrientation {
