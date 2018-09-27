@@ -12,7 +12,9 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     @IBOutlet weak var previewView: UIView?
     
     // Take a photo
-    @IBOutlet weak var captureButton: UIButton!
+    @IBAction func capturePressed(_ sender: Any) {
+        // todo
+    }
     
     // AVCapture variables to hold sequence data
     var session: AVCaptureSession?
@@ -341,7 +343,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
             }
             
             if !trackingRequest.isLastFrame {
-                if observation.confidence > 0.3 {
+                if observation.confidence > 0.5{
                     trackingRequest.inputObservation = observation
                 } else {
                     trackingRequest.isLastFrame = true

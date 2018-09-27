@@ -31,7 +31,7 @@
                                     <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 </state>
                                 <connections>
-                                    <action selector="capturePressed:" destination="BYZ-38-t0r" eventType="touchUpInside" id="B6D-Bz-w34"/>
+                                    <action selector="capturePressed:" destination="BYZ-38-t0r" eventType="touchUpInside" id="tlq-8i-rNl"/>
                                 </connections>
                             </button>
                         </subviews>
@@ -47,7 +47,6 @@
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                     </view>
                     <connections>
-                        <outlet property="captureButton" destination="NsD-4r-eha" id="kc2-J6-eMx"/>
                         <outlet property="previewView" destination="mP4-Op-A0V" id="zS5-gc-9O7"/>
                     </connections>
                 </viewController>
