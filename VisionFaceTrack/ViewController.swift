@@ -6,10 +6,13 @@ import UIKit
 import AVKit
 import Vision
 
-class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
+class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate, AVCapturePhotoCaptureDelegate {
     
     // Main view for showing camera content.
     @IBOutlet weak var previewView: UIView?
+    
+    // Take a photo
+    @IBOutlet weak var captureButton: UIButton!
     
     // AVCapture variables to hold sequence data
     var session: AVCaptureSession?
@@ -214,12 +217,12 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         rectangleShapeLayer.bounds = captureDeviceBounds
         rectangleShapeLayer.anchorPoint = normalizedCenterPoint
         rectangleShapeLayer.position = captureDeviceBoundsCenterPoint
-        rectangleShapeLayer.fillColor = UIColor.white.withAlphaComponent(0.2).cgColor
+        rectangleShapeLayer.fillColor = nil
         rectangleShapeLayer.strokeColor = self.view.tintColor.withAlphaComponent(0.7).cgColor
-        rectangleShapeLayer.lineWidth = 25
+        rectangleShapeLayer.lineWidth = 40
         rectangleShapeLayer.lineJoin = .round
         rectangleShapeLayer.shadowOpacity = 0.8
-        rectangleShapeLayer.shadowRadius = 8
+        rectangleShapeLayer.shadowRadius = 10
         
         overlayLayer.addSublayer(rectangleShapeLayer)
         rootLayer.addSublayer(overlayLayer)
@@ -387,5 +390,10 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
                 NSLog("Failed to perform FaceLandmarkRequest: %@", error)
             }
         }
+    }
+    
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        // Photo Captured
+        print("photo captured")
     }
 }
