@@ -5,6 +5,7 @@
 import UIKit
 import AVKit
 import Vision
+import Photos
 
 class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate, AVCapturePhotoCaptureDelegate {
     
@@ -13,7 +14,20 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     // Take a photo
     @IBAction func capturePressed(_ sender: Any) {
-        // todo
+        print("Capture Pressed")
+        
+        let photoSettings: AVCapturePhotoSettings
+        if self.photoOutput.availablePhotoCodecTypes.contains(.hevc) {
+            photoSettings = AVCapturePhotoSettings(format:
+                [AVVideoCodecKey: AVVideoCodecType.hevc])
+        } else {
+            photoSettings = AVCapturePhotoSettings()
+        }
+        photoSettings.flashMode = .auto
+        photoSettings.isAutoStillImageStabilizationEnabled =
+            self.photoOutput.isStillImageStabilizationSupported
+        
+        photoOutput.capturePhoto(with: photoSettings, delegate: self)
     }
     
     // AVCapture variables to hold sequence data
@@ -28,6 +42,9 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     var rootLayer: CALayer?
     var detectionOverlayLayer: CALayer?
     var detectedRectangleShapeLayer: CAShapeLayer?
+    
+    // Photo Output
+    let photoOutput = AVCapturePhotoOutput()
     
     // Vision requests
     private var rectDetectionRequests: [VNDetectRectanglesRequest]?
@@ -44,9 +61,22 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         
         self.session = self.setupAVCaptureSession()
         
+        self.session?.beginConfiguration()
+        
+        photoOutput.isHighResolutionCaptureEnabled = true
+        photoOutput.isLivePhotoCaptureEnabled = false
+        
+        if let session = self.session, session.canAddOutput(photoOutput)  {
+            session.sessionPreset = .photo
+            session.addOutput(photoOutput)
+        }
+        
+        self.session?.commitConfiguration()
+        
         self.prepareRectangleVisionRequest()
         
         self.session?.startRunning()
+        
     }
     
     // Ensure that the interface stays locked in Portrait.
@@ -395,7 +425,32 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     }
     
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        guard error == nil else {
+            print("Error capturing photo: \(error!)"); return
+        }
+
         // Photo Captured
-        print("photo captured")
+        print("Photo Captured")
+        
+        PHPhotoLibrary.requestAuthorization { status in
+            guard status == .authorized else { return }
+            
+            PHPhotoLibrary.shared().performChanges({
+                
+                // Add the captured photo's file data as the main resource for the Photos asset.
+                let creationRequest = PHAssetCreationRequest.forAsset()
+                creationRequest.addResource(with: .photo, data: photo.fileDataRepresentation()!, options: nil)
+                
+            }, completionHandler: self.handlePhotoLibraryError)
+        }
+    }
+    
+    func handlePhotoLibraryError(someBool: Bool, error: Error?) {
+        guard error == nil else { print("Error saving photo: \(error!)"); return }
+        
+        let alertController = UIAlertController(title: "Saved!", message:
+            "The photo was saved to your camera roll!", preferredStyle: .alert)
+        alertController.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        self.present(alertController, animated: true, completion: nil)
     }
 }
