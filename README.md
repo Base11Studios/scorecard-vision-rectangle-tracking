@@ -4,8 +4,6 @@ Iterating on Apple's [Tracking the User's Face in Real Time](https://developer.a
 
 ## Next Steps
 
-* Capture Image
-* Save Image to Camera Roll
 * Crop image to detected rectangle bounding box
 * Send Image to Photo Service
 
