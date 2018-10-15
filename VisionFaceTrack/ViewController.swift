@@ -45,6 +45,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     // Photo Output
     let photoOutput = AVCapturePhotoOutput()
+    var allowDrawing = true
     
     // Vision requests
     private var rectDetectionRequests: [VNDetectRectanglesRequest]?
@@ -267,26 +268,29 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
     fileprivate func drawRectangleObservations(_ rectObservations: [VNRectangleObservation]) {
         
-        guard let rectangleShapeLayer = self.detectedRectangleShapeLayer else {
-            return
+        if allowDrawing {
+            guard let rectangleShapeLayer = self.detectedRectangleShapeLayer else {
+                return
+            }
+            
+            CATransaction.begin()
+            
+            CATransaction.setValue(NSNumber(value: true), forKey: kCATransactionDisableActions)
+            
+            let rectanglePath = CGMutablePath()
+            
+            for rectObservation in rectObservations {
+                rectanglePath.addPath(traceRectPath(rectObservation: rectObservation))
+            }
+            
+            rectangleShapeLayer.path = rectanglePath
+            self.detectedRectangleShapeLayer = rectangleShapeLayer
+            
+            avUtil.updateLayerGeometry(captureDeviceResolution: self.captureDeviceResolution, detectionOverlayLayer: self.detectionOverlayLayer, rootLayer: self.rootLayer, previewLayer: self.previewLayer)
+            
+            CATransaction.commit()
         }
         
-        CATransaction.begin()
-        
-        CATransaction.setValue(NSNumber(value: true), forKey: kCATransactionDisableActions)
-        
-        let rectanglePath = CGMutablePath()
-        
-        for rectObservation in rectObservations {
-            rectanglePath.addPath(traceRectPath(rectObservation: rectObservation))
-        }
-        
-        rectangleShapeLayer.path = rectanglePath
-        self.detectedRectangleShapeLayer = rectangleShapeLayer
-        
-        avUtil.updateLayerGeometry(captureDeviceResolution: self.captureDeviceResolution, detectionOverlayLayer: self.detectionOverlayLayer, rootLayer: self.rootLayer, previewLayer: self.previewLayer)
-        
-        CATransaction.commit()
     }
     
     func traceRectPath(rectObservation: VNRectangleObservation) -> CGPath {
@@ -432,6 +436,9 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         // Photo Captured
         print("Photo Captured")
         
+        previewLayer?.connection?.isEnabled = false
+        allowDrawing = false
+        
         PHPhotoLibrary.requestAuthorization { status in
             guard status == .authorized else { return }
             
@@ -450,7 +457,10 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         
         let alertController = UIAlertController(title: "Saved!", message:
             "The photo was saved to your camera roll!", preferredStyle: .alert)
-        alertController.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        alertController.addAction(UIAlertAction(title: "OK", style: .default, handler: { (action:UIAlertAction!) in
+            self.previewLayer?.connection?.isEnabled = true
+            self.allowDrawing = true
+        }))
         self.present(alertController, animated: true, completion: nil)
     }
 }
