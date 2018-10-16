@@ -16,6 +16,8 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     @IBAction func capturePressed(_ sender: Any) {
         print("Capture Pressed")
         
+        capturedRect = lastDetectedRect
+        
         let photoSettings: AVCapturePhotoSettings
         if self.photoOutput.availablePhotoCodecTypes.contains(.hevc) {
             photoSettings = AVCapturePhotoSettings(format:
@@ -51,7 +53,12 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     private var rectDetectionRequests: [VNDetectRectanglesRequest]?
     private var rectTrackingRequests: [VNTrackObjectRequest]?
     
+    // Vision Handler
     lazy var rectSequenceRequestHandler = VNSequenceRequestHandler()
+    
+    // Vision Observations
+    lazy var lastDetectedRect = VNRectangleObservation()
+    lazy var capturedRect = VNRectangleObservation()
     
     lazy var avUtil = AVUtility()
     
@@ -281,6 +288,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
             
             for rectObservation in rectObservations {
                 rectanglePath.addPath(traceRectPath(rectObservation: rectObservation))
+                lastDetectedRect = rectObservation
             }
             
             rectangleShapeLayer.path = rectanglePath
@@ -439,16 +447,75 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         previewLayer?.connection?.isEnabled = false
         allowDrawing = false
         
-        PHPhotoLibrary.requestAuthorization { status in
-            guard status == .authorized else { return }
+        // Rectify the detected image and reduce it to inverted greyscale
+        guard let cgImage = photo.cgImageRepresentation()?.takeRetainedValue() else {
+            print("Error for cgImage")
+            return
+        }
+        
+        let inputImage = CIImage(cgImage: cgImage)
+        let imageSize = inputImage.extent.size
+        
+        // Verify detected rectangle is valid.
+        let boundingBox = capturedRect.boundingBox.scaled(to: imageSize)
+        guard inputImage.extent.contains(boundingBox)
+            else { print("invalid detected rectangle"); return }
+        
+        // Rectify the detected image and reduce it to inverted grayscale for applying model.
+        let topLeft = capturedRect.topLeft.scaled(to: imageSize)
+        let topRight = capturedRect.topRight.scaled(to: imageSize)
+        let bottomLeft = capturedRect.bottomLeft.scaled(to: imageSize)
+        let bottomRight = capturedRect.bottomRight.scaled(to: imageSize)
+        let correctedImage = inputImage
+            .cropped(to: boundingBox)
+            .applyingFilter("CIPerspectiveCorrection", parameters: [
+            "inputTopLeft": CIVector(cgPoint: topLeft),
+            "inputTopRight": CIVector(cgPoint: topRight),
+            "inputBottomLeft": CIVector(cgPoint: bottomLeft),
+            "inputBottomRight": CIVector(cgPoint: bottomRight)
+            ])
+            .applyingFilter("CIColorControls", parameters: [
+                kCIInputSaturationKey: 0,
+                kCIInputContrastKey: 32
+                ])
+            .applyingFilter("CIColorInvert")
+        
+        let context = CIContext()
+        if let correctedCgImage = context.createCGImage(correctedImage, from: correctedImage.extent) {
+            let uiImage = UIImage(cgImage: correctedCgImage)
             
-            PHPhotoLibrary.shared().performChanges({
-                
-                // Add the captured photo's file data as the main resource for the Photos asset.
-                let creationRequest = PHAssetCreationRequest.forAsset()
-                creationRequest.addResource(with: .photo, data: photo.fileDataRepresentation()!, options: nil)
-                
-            }, completionHandler: self.handlePhotoLibraryError)
+            // Save cropped image to Photo Roll
+            UIImageWriteToSavedPhotosAlbum(uiImage, self, #selector(self.handleSaveCompletion(_:didFinishSavingWithError:contextInfo:)), nil)
+            
+//            PHPhotoLibrary.requestAuthorization { status in
+//                guard status == .authorized else { return }
+//
+//                PHPhotoLibrary.shared().performChanges({
+//
+//                    // Add the captured photo's file data as the main resource for the Photos asset.
+//                    let creationRequest = PHAssetCreationRequest.forAsset()
+//                    if let uiImageData = uiImage.pngData() {
+//                        creationRequest.addResource(with: .photo, data: uiImageData, options: nil)
+//                    }
+//
+//                }, completionHandler: self.handlePhotoLibraryError)
+//            }
+        }
+            
+    }
+    
+    @objc func handleSaveCompletion(_ image: UIImage, didFinishSavingWithError error: NSError?, contextInfo: UnsafeRawPointer) {
+        if let error = error {
+            let ac = UIAlertController(title: "Save error", message: error.localizedDescription, preferredStyle: .alert)
+            ac.addAction(UIAlertAction(title: "OK", style: .default))
+            present(ac, animated: true)
+        } else {
+            let ac = UIAlertController(title: "Saved!", message: "Your altered image has been saved to your photos.", preferredStyle: .alert)
+            ac.addAction(UIAlertAction(title: "OK", style: .default, handler: { (action:UIAlertAction!) in
+                self.previewLayer?.connection?.isEnabled = true
+                self.allowDrawing = true
+            }))
+            present(ac, animated: true)
         }
     }
     
