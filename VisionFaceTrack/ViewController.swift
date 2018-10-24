@@ -288,6 +288,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
             for rectObservation in rectObservations {
                 rectanglePath.addPath(traceRectPath(rectObservation: rectObservation))
                 lastDetectedRect = rectObservation
+                rectangleShapeLayer.strokeColor = rectShapeColor(for: rectObservation)
             }
             
             rectangleShapeLayer.path = rectanglePath
@@ -306,6 +307,25 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         let rectPath = getBoxPath(points: convertedPoints)
         
         return rectPath
+    }
+    
+    func rectShapeColor(for rectObservation: VNRectangleObservation) -> CGColor {
+        let lineDiff = abs(distance(rectObservation.bottomLeft, rectObservation.topRight) - distance(rectObservation.bottomRight, rectObservation.topLeft))
+        print("LineDiff: \(lineDiff)")
+        if lineDiff < 0.009 {
+            return UIColor.green.cgColor
+        } else if lineDiff < 0.1 {
+            return UIColor.yellow.cgColor
+        } else if lineDiff < 0.5 {
+            return UIColor.gray.cgColor
+        }
+        return UIColor.red.cgColor
+    }
+    
+    func distance(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
+        let xDist = a.x - b.x
+        let yDist = a.y - b.y
+        return CGFloat(sqrt(xDist * xDist + yDist * yDist))
     }
     
     func convertFromCamera(_ point: CGPoint) -> CGPoint {
